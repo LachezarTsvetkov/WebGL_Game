@@ -47,7 +47,7 @@
         const parallaxMid = new PIXI.TilingSprite(texBgMid, 1200, 600);
         const ground = new PIXI.TilingSprite(texGround, 1200, 50);
         ground.y = 550;
-        
+
         const gameContainer = new PIXI.Container();
         gameContainer.sortableChildren = true;
 
@@ -66,7 +66,7 @@
         scoreText.y = 20;
         hpText.x = 20;
         hpText.y = 55;
-        
+
         let goText, restartText;
         uiContainer.addChild(scoreText, hpText);
 
@@ -77,7 +77,7 @@
         player.x = 100;
         player.y = 300;
         player.vy = 0;
-        player.tintTimer = 0; 
+        player.tintTimer = 0;
         player.zIndex = 100;
         gameContainer.addChild(player);
 
@@ -85,8 +85,22 @@
         const crawlers = [], nests = [], platforms = [], bullets = [], shooters = [], enemyBullets = [];
         const keys = {};
         let frames = 0, score = 0, hp = 3, isGameOver = false;
-        const gravity = 0.25, jumpForce = -8.5, moveSpeed = 4, scrollSpeed = 2.5;
+
+        const gravity = 0.25, jumpForce = -8.5, moveSpeed = 4;
         let lastPlatformY = ground.y;
+
+
+        //-----Difficulty modifiers-----\\
+        let difficultyModifier = 1.0;
+        let currentScrollSpeed = 2.5;
+
+        let platTimer = 0;
+        let crawlerTimer = 0;
+        let nestTimer = 0;
+
+        const BASE_PLAT_SPAWN = 150;
+        const BASE_CRAWLER_SPAWN = 150;
+        const BASE_NEST_SPAWN = 400;
 
         //-----Input logic-----\\
         window.addEventListener('keydown', (e) => {
@@ -110,8 +124,8 @@
             if (isGameOver) return;
             hp--;
             hpText.text = 'HP: ' + hp;
-            player.tint = 0xFF0000; 
-            player.tintTimer = 45;  
+            player.tint = 0xFF0000;
+            player.tintTimer = 45;
             if (hp <= 0) {
                 triggerGameOver();
             }
@@ -122,55 +136,56 @@
                 hp++;
                 hpText.text = 'HP: ' + hp;
             }
-            player.tint = 0x00FF00; 
-            player.tintTimer = 45;  
+            player.tint = 0x00FF00;
+            player.tintTimer = 45;
         }
 
 
         //-----End Game & Reset Logic-----\\
         function triggerGameOver() {
             isGameOver = true;
-            player.tint = 0x555555; 
-            
-            goText = new PIXI.Text('GAME OVER', new PIXI.TextStyle({ 
-                fontSize: 80, 
-                fill: ['#e74c3c'], 
-                fontWeight: 'bold' 
+            player.tint = 0x555555;
+
+            goText = new PIXI.Text('GAME OVER', new PIXI.TextStyle({
+                fontSize: 80,
+                fill: ['#e74c3c'],
+                fontWeight: 'bold'
             }));
-            goText.x = 380; 
+            goText.x = 380;
             goText.y = 220;
-            
-            restartText = new PIXI.Text('Press ENTER to Restart', new PIXI.TextStyle({ 
-                fontSize: 30, 
-                fill: ['#f1c40f'], 
-                fontWeight: 'bold' 
+
+            restartText = new PIXI.Text('Press ENTER to Restart', new PIXI.TextStyle({
+                fontSize: 30,
+                fill: ['#f1c40f'],
+                fontWeight: 'bold'
             }));
-            restartText.x = 420; 
+            restartText.x = 420;
             restartText.y = 320;
 
             uiContainer.addChild(goText, restartText);
         }
 
         function resetGame() {
-            score = 0; 
-            hp = 3;
-            frames = 0; 
-            isGameOver = false; 
+            score = 0; hp = 3;
+            frames = 0;
+            isGameOver = false;
             lastPlatformY = ground.y;
-            scoreText.text = 'Score: 0'; hpText.text = 'HP: 3';
+            scoreText.text = 'Score: 0';
+            hpText.text = 'HP: 3';
 
-            if (goText) uiContainer.removeChild(goText); 
+            difficultyModifier = 1.0;
+            platTimer = 0;
+            crawlerTimer = 0;
+            nestTimer = 0;
+
+            if (goText) uiContainer.removeChild(goText);
             if (restartText) uiContainer.removeChild(restartText);
 
-            player.x = 100; 
-            player.y = 300; 
-            player.vy = 0; 
-            player.tint = 0xFFFFFF; 
-            player.tintTimer = 0;
+            player.x = 100; player.y = 300; player.vy = 0; player.tint = 0xFFFFFF; player.tintTimer = 0;
 
-            [bullets, enemyBullets, crawlers, shooters, nests, platforms].forEach(arr => { 
-                arr.forEach(s => gameContainer.removeChild(s)); 
-                arr.length = 0; 
+            [bullets, enemyBullets, crawlers, shooters, nests, platforms].forEach(arr => {
+                arr.forEach(s => gameContainer.removeChild(s));
+                arr.length = 0;
             });
         }
 
@@ -179,17 +194,22 @@
         app.ticker.add(() => {
             if (isGameOver) return;
             frames++;
-            
-            //Background Speeds
-            parallaxBack.tilePosition.x -= scrollSpeed * 0.1;
-            parallaxMid.tilePosition.x -= scrollSpeed * 0.6;
-            ground.tilePosition.x -= scrollSpeed;
 
-            // Handle Tint Timers
+            if (difficultyModifier < 2.5) {
+                difficultyModifier += 0.0002;
+            }
+            currentScrollSpeed = 2.5 * difficultyModifier;
+
+            //Background speeds
+            parallaxBack.tilePosition.x -= currentScrollSpeed * 0.1;
+            parallaxMid.tilePosition.x -= currentScrollSpeed * 0.6;
+            ground.tilePosition.x -= currentScrollSpeed;
+
+            //Tint Timers
             if (player.tintTimer > 0) {
                 player.tintTimer--;
                 if (player.tintTimer === 0) {
-                    player.tint = 0xFFFFFF; 
+                    player.tint = 0xFFFFFF;
                 }
             }
 
@@ -206,8 +226,8 @@
             //Platform collision
             platforms.forEach(plat => {
                 if (player.vy >= 0 && player.y + player.height >= plat.y && player.y + player.height <= plat.y + player.vy + 2 && player.x + player.width > plat.x && player.x < plat.x + plat.width) {
-                    player.y = plat.y - player.height; 
-                    player.vy = 0; 
+                    player.y = plat.y - player.height;
+                    player.vy = 0;
                     onGround = true;
                 }
             });
@@ -216,7 +236,7 @@
             let isMoving = false;
             if (keys['ArrowRight'] && player.x < 600) { player.x += moveSpeed; isMoving = true; }
             if (keys['ArrowLeft'] && player.x > 0) { player.x -= moveSpeed; isMoving = true; }
-            
+
             if (isMoving && onGround) player.play();
             else player.gotoAndStop(0);
 
@@ -226,33 +246,40 @@
 
             //Shoot
             if (keys['KeyZ'] && frames % 20 === 0) {
-                const b = new PIXI.Sprite(texBullet); 
-                b.x = player.x + 40; 
-                b.y = player.y + 25; 
-                bullets.push(b); 
+                const b = new PIXI.Sprite(texBullet);
+                b.x = player.x + 40;
+                b.y = player.y + 25;
+                bullets.push(b);
                 gameContainer.addChild(b);
             }
 
             //-----Spawning logic-----\\
+            platTimer++;
+            crawlerTimer++;
+            nestTimer++;
+
             //Platform + Shooter
-            if (frames % 150 === 0) {
-                const plat = new PIXI.Sprite(texPlatform); 
+            if (platTimer >= (BASE_PLAT_SPAWN / difficultyModifier)) {
+                platTimer = 0;
+
+                const plat = new PIXI.Sprite(texPlatform);
                 plat.x = 1250;
-                let minY = Math.max(200, lastPlatformY - 80); 
-                let maxY = Math.min(ground.y - 40, lastPlatformY + 60); 
+                let minY = Math.max(200, lastPlatformY - 80);
+                let maxY = Math.min(ground.y - 40, lastPlatformY + 60);
                 plat.y = Math.random() * (maxY - minY) + minY;
-                
-                lastPlatformY = plat.y; 
-                platforms.push(plat); 
+
+                lastPlatformY = plat.y;
+                platforms.push(plat);
                 gameContainer.addChild(plat);
 
-                if (Math.random() < 0.4) { 
-                    const s = new PIXI.Sprite(texShooter); 
-                    s.x = plat.x + 40; 
-                    s.y = plat.y - 40; 
-                    s.shootTimer = Math.random() * 60; //Prevent enemy shooters to shoot all at once
-                    shooters.push(s); 
-                    gameContainer.addChild(s); 
+                //Increase odds for spawning shooters the higher the difficulty is
+                if (Math.random() < (0.3 + (difficultyModifier * 0.1))) {
+                    const s = new PIXI.Sprite(texShooter);
+                    s.x = plat.x + 40;
+                    s.y = plat.y - 40;
+                    s.shootTimer = Math.random() * 60;
+                    shooters.push(s);
+                    gameContainer.addChild(s);
                 }
             }
 
@@ -261,31 +288,33 @@
             }
 
             //Crawler
-            if (frames % 150 === 0) { 
-                const bug = new PIXI.AnimatedSprite([texCrawler1, texCrawler2]); 
-                bug.animationSpeed = 0.05;
+            if (crawlerTimer >= (BASE_CRAWLER_SPAWN / difficultyModifier)) {
+                crawlerTimer = 0;
+                const bug = new PIXI.AnimatedSprite([texCrawler1, texCrawler2]);
+                bug.animationSpeed = 0.05 * difficultyModifier;
                 bug.play();
-                bug.x = 1250; 
-                bug.y = ground.y - 40; 
-                crawlers.push(bug); 
-                gameContainer.addChild(bug); 
+                bug.x = 1250;
+                bug.y = ground.y - 40;
+                crawlers.push(bug);
+                gameContainer.addChild(bug);
             }
 
             //Nest
-            if (frames % 400 === 0) { 
-                const nest = new PIXI.Sprite(texNest); 
-                nest.x = 1250; 
-                nest.y = ground.y - 40; 
-                nests.push(nest); 
-                gameContainer.addChild(nest); 
+            if (nestTimer >= (BASE_NEST_SPAWN * difficultyModifier)) {
+                nestTimer = 0;
+                const nest = new PIXI.Sprite(texNest);
+                nest.x = 1250;
+                nest.y = ground.y - 40;
+                nests.push(nest);
+                gameContainer.addChild(nest);
             }
 
             //Player-Bullet collision
             for (let i = bullets.length - 1; i >= 0; i--) {
                 bullets[i].x += 10;
-                if (bullets[i].x > 1250) { 
-                    gameContainer.removeChild(bullets[i]); 
-                    bullets.splice(i, 1); 
+                if (bullets[i].x > 1250) {
+                    gameContainer.removeChild(bullets[i]);
+                    bullets.splice(i, 1);
                 }
             }
 
@@ -294,15 +323,15 @@
                 enemyBullets[i].x += enemyBullets[i].vx;
                 enemyBullets[i].y += enemyBullets[i].vy;
 
-                if (checkCollision(player, enemyBullets[i])) { 
+                if (checkCollision(player, enemyBullets[i])) {
                     takeDamage();
-                    gameContainer.removeChild(enemyBullets[i]); 
-                    enemyBullets.splice(i, 1); 
-                    continue; 
+                    gameContainer.removeChild(enemyBullets[i]);
+                    enemyBullets.splice(i, 1);
+                    continue;
                 }
-                
+
                 if (enemyBullets[i].x < -50 || enemyBullets[i].y > 650) {
-                    gameContainer.removeChild(enemyBullets[i]); 
+                    gameContainer.removeChild(enemyBullets[i]);
                     enemyBullets.splice(i, 1);
                 }
             }
@@ -310,69 +339,69 @@
             //Move objects and destroy them once they leave the screen
             [platforms, nests].forEach(arr => {
                 for (let i = arr.length - 1; i >= 0; i--) {
-                    arr[i].x -= scrollSpeed;
-                    if (arr[i].x < -140) { 
-                        gameContainer.removeChild(arr[i]); 
-                        arr.splice(i, 1); 
+                    arr[i].x -= currentScrollSpeed;
+                    if (arr[i].x < -140) {
+                        gameContainer.removeChild(arr[i]);
+                        arr.splice(i, 1);
                     }
                 }
             });
 
             //-----Shooters logic-----\\
             for (let i = shooters.length - 1; i >= 0; i--) {
-                shooters[i].x -= scrollSpeed;
+                shooters[i].x -= currentScrollSpeed;
                 shooters[i].shootTimer++;
-                
-                //Predict and shoot
-                if (shooters[i].shootTimer > 150) { 
-                    shooters[i].shootTimer = 0; 
-                    
+
+                if (shooters[i].shootTimer > (150 / difficultyModifier)) {
+                    shooters[i].shootTimer = 0;
+
                     let predictedX = player.x + player.width / 2;
-                    if (keys['ArrowRight']) predictedX += moveSpeed * 15; 
-                    if (keys['ArrowLeft']) predictedX -= moveSpeed * 15;  
+                    if (keys['ArrowRight']) predictedX += moveSpeed * 15;
+                    if (keys['ArrowLeft']) predictedX -= moveSpeed * 15;
 
                     let dx = predictedX - (shooters[i].x + shooters[i].width / 2);
                     let dy = (player.y + player.height / 2) - (shooters[i].y + shooters[i].height / 2);
                     let dist = Math.sqrt(dx * dx + dy * dy);
-                    
-                    let eBulletSpeed = 3.5;
-                    let eb = new PIXI.Sprite(texEnemyBullet); 
-                    eb.x = shooters[i].x + 15; 
-                    eb.y = shooters[i].y + 15; 
+
+                    let eBulletSpeed = 3.5 * difficultyModifier;
+
+                    let eb = new PIXI.Sprite(texEnemyBullet);
+                    eb.x = shooters[i].x + 15;
+                    eb.y = shooters[i].y + 15;
                     eb.vx = (dx / dist) * eBulletSpeed;
                     eb.vy = (dy / dist) * eBulletSpeed;
-                    
-                    enemyBullets.push(eb); 
-                    gameContainer.addChild(eb); 
+
+                    enemyBullets.push(eb);
+                    gameContainer.addChild(eb);
                 }
 
-                for (let j = bullets.length - 1; j >= 0; j--) { 
-                    if (shooters[i] && checkCollision(bullets[j], shooters[i])) { 
-                        score += 20; 
-                        scoreText.text = 'Score: ' + score; 
-                        gameContainer.removeChild(shooters[i]); 
-                        gameContainer.removeChild(bullets[j]); 
-                        shooters.splice(i, 1); 
-                        bullets.splice(j, 1); break; 
-                    } 
+                for (let j = bullets.length - 1; j >= 0; j--) {
+                    if (shooters[i] && checkCollision(bullets[j], shooters[i])) {
+                        score += 20;
+                        scoreText.text = 'Score: ' + score;
+                        gameContainer.removeChild(shooters[i]);
+                        gameContainer.removeChild(bullets[j]);
+                        shooters.splice(i, 1);
+                        bullets.splice(j, 1); break;
+                    }
                 }
 
                 //Penalty for leaving the screen
                 if (shooters[i] && shooters[i].x < -50) {
                     takeDamage();
-                    gameContainer.removeChild(shooters[i]); 
+                    gameContainer.removeChild(shooters[i]);
                     shooters.splice(i, 1);
                 }
             }
 
             //-----Crawlers logic-----\\
             for (let i = crawlers.length - 1; i >= 0; i--) {
-                crawlers[i].x -= (scrollSpeed + 0.5);
-                
+                crawlers[i].x -= (currentScrollSpeed + 0.5);
+
                 //Penalty for leaving the screen
                 if (crawlers[i].x < -50) {
                     takeDamage();
-                    gameContainer.removeChild(crawlers[i]); 
+                    gameContainer.removeChild(crawlers[i]);
                     crawlers.splice(i, 1);
                     continue;
                 }
@@ -380,17 +409,17 @@
                 //Collision detection
                 if (checkCollision(player, crawlers[i])) {
                     takeDamage();
-                    gameContainer.removeChild(crawlers[i]); 
+                    gameContainer.removeChild(crawlers[i]);
                     crawlers.splice(i, 1);
                     continue;
                 }
                 for (let j = bullets.length - 1; j >= 0; j--) {
                     if (crawlers[i] && checkCollision(bullets[j], crawlers[i])) {
-                        score += 10; 
+                        score += 10;
                         scoreText.text = 'Score: ' + score;
-                        gameContainer.removeChild(crawlers[i]); 
+                        gameContainer.removeChild(crawlers[i]);
                         gameContainer.removeChild(bullets[j]);
-                        crawlers.splice(i, 1); 
+                        crawlers.splice(i, 1);
                         bullets.splice(j, 1); break;
                     }
                 }
