@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+
+<head>
+    <title>Bug Exterminato</title>
+    <style>
+        body {
+            background-color: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        canvas {
+            border: 2px solid brown;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="https://pixijs.download/v7.3.2/pixi.min.js"></script>
+    <script>
+        const app = new PIXI.Application({ 
+            width: 1200, 
+            height: 600, 
+            backgroundColor: 0x111111 });
+        document.body.appendChild(app.view);
+
+        
+        //-----Initial graphics-----юю
+        
+        const g = new PIXI.Graphics();
+        g.beginFill(0x2040f5); g.drawRect(0, 0, 40, 50);
+        const texPlayer = app.renderer.generateTexture(g);
+
+        g.clear(); g.beginFill(0x19693b); g.drawRect(0, 0, 1200, 50);
+        const texGround = app.renderer.generateTexture(g);
+
+        const gameContainer = new PIXI.Container();
+        app.stage.addChild(gameContainer);
+
+        const ground = new PIXI.Sprite(texGround);
+        ground.y = 550;
+        gameContainer.addChild(ground);
+
+        const player = new PIXI.Sprite(texPlayer);
+        player.x = 100; player.y = 300;
+        player.vy = 0;
+        gameContainer.addChild(player);
+
+        const keys = {};
+        window.addEventListener('keydown', (e) => { 
+            keys[e.code] = true; 
+        });
+        window.addEventListener('keyup', (e) => { 
+            keys[e.code] = false; 
+        });
+
+        const gravity = 0.25;
+        const jumpForce = -8.5;
+        const moveSpeed = 4;
+
+        app.ticker.add(() => {
+            player.vy += gravity;
+            player.y += player.vy;
+            let onGround = false;
+
+            if (player.y + player.height > ground.y) {
+                player.y = ground.y - player.height;
+                player.vy = 0;
+                onGround = true;
+            }
+
+            if (keys['ArrowRight'] && player.x < 600) player.x += moveSpeed;
+            if (keys['ArrowLeft'] && player.x > 0) player.x -= moveSpeed;
+            if ((keys['ArrowUp'] || keys['Space']) && onGround) player.vy = jumpForce;
+        });
+    </script>
+</body>
+
+</html>
