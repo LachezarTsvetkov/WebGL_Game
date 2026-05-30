@@ -73,7 +73,7 @@
         player.x = 100;
         player.y = 300;
         player.vy = 0;
-        player.tintTimer = 0;
+        player.tintTimer = 0; 
         gameContainer.addChild(player);
 
         //-----Game variables-----\\
@@ -91,7 +91,6 @@
             keys[e.code] = false;
         });
 
-        
         //-----Helper Functions-----\\
         function checkCollision(obj1, obj2) {
             const b1 = obj1.getBounds();
@@ -177,10 +176,14 @@
 
             //-----Spawning logic-----\\
             //Platform + Shooter
-            if (frames % 120 === 0) {
+            if (frames % 150 === 0) {
                 const plat = new PIXI.Sprite(texPlatform); 
                 plat.x = 1250;
-                plat.y = Math.random() * ((ground.y - 40) - Math.max(200, lastPlatformY - 80)) + Math.max(200, lastPlatformY - 80);
+                
+                let minY = Math.max(200, lastPlatformY - 80); 
+                let maxY = Math.min(ground.y - 40, lastPlatformY + 60); 
+                plat.y = Math.random() * (maxY - minY) + minY;
+                
                 lastPlatformY = plat.y; 
                 platforms.push(plat); 
                 gameContainer.addChild(plat);
@@ -193,6 +196,10 @@
                     shooters.push(s); 
                     gameContainer.addChild(s); 
                 }
+            }
+
+            if (frames % 500 === 0) {
+                lastPlatformY = ground.y;
             }
 
             //Crawler
