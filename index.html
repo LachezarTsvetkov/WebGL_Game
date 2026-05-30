@@ -21,18 +21,19 @@
 <body>
     <script src="https://pixijs.download/v7.3.2/pixi.min.js"></script>
     <script>
-        const app = new PIXI.Application({ 
-            width: 1200, 
-            height: 600, 
-            backgroundColor: 0x111111 });
+        const app = new PIXI.Application({
+            width: 1200,
+            height: 600,
+            backgroundColor: 0x111111
+        });
         document.body.appendChild(app.view);
 
         //-----Texture generation-----\\
-        function createTex(w, h, color) { 
-            const g = new PIXI.Graphics(); 
-            g.beginFill(color); 
-            g.drawRect(0, 0, w, h); 
-            return app.renderer.generateTexture(g); 
+        function createTex(w, h, color) {
+            const g = new PIXI.Graphics();
+            g.beginFill(color);
+            g.drawRect(0, 0, w, h);
+            return app.renderer.generateTexture(g);
         }
         const texPlayer = createTex(40, 50, 0x2040f5);
         const texGround = createTex(1200, 50, 0x19693b);
@@ -40,49 +41,51 @@
         const texPlatform = createTex(120, 30, 0x555555);
         const texNest = createTex(40, 40, 0x2ecc71);
         const texBullet = createTex(15, 5, 0xf1c40f);
+        const texShooter = createTex(40, 40, 0x9b59b6);
+        const texEnemyBullet = createTex(12, 12, 0x2ecc71);
 
 
         //-----Render ground, player, and UI-----\\
-        const ground = new PIXI.TilingSprite(texGround, 1200, 50); 
+        const ground = new PIXI.TilingSprite(texGround, 1200, 50);
         ground.y = 550;
-        const gameContainer = new PIXI.Container(); 
+        const gameContainer = new PIXI.Container();
         const uiContainer = new PIXI.Container();
         app.stage.addChild(ground, gameContainer, uiContainer);
 
         //UI
-        const style = new PIXI.TextStyle({ 
-            fontSize: 24, 
-            fill: ['#ffffff'], 
-            fontWeight: 'bold' 
+        const style = new PIXI.TextStyle({
+            fontSize: 24,
+            fill: ['#ffffff'],
+            fontWeight: 'bold'
         });
         const scoreText = new PIXI.Text('Score: 0', style);
         const hpText = new PIXI.Text('HP: 3', style);
-        scoreText.x = 20; 
-        scoreText.y = 20; 
-        hpText.x = 20; 
+        scoreText.x = 20;
+        scoreText.y = 20;
+        hpText.x = 20;
         hpText.y = 55;
         uiContainer.addChild(scoreText, hpText);
 
         //Player
-        const player = new PIXI.Sprite(texPlayer); 
-        player.x = 100; 
-        player.y = 300; 
-        player.vy = 0; 
+        const player = new PIXI.Sprite(texPlayer);
+        player.x = 100;
+        player.y = 300;
+        player.vy = 0;
         gameContainer.addChild(player);
 
         //-----Game variables-----\\
-        const crawlers = [], nests = [], platforms = [], bullets = [];
-        const keys = {}; 
-        let frames = 0, score = 0, hp = 300, isGameOver = false;
+        const crawlers = [], nests = [], platforms = [], bullets = [], shooters = [], enemyBullets = [];
+        const keys = {};
+        let frames = 0, score = 0, hp = 3, isGameOver = false;
         const gravity = 0.25, jumpForce = -8.5, moveSpeed = 4, scrollSpeed = 2.5;
         let lastPlatformY = ground.y;
 
         //-----Input logic-----\\
-        window.addEventListener('keydown', (e) => { 
-            keys[e.code] = true; 
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
         });
-        window.addEventListener('keyup', (e) => { 
-            keys[e.code] = false; 
+        window.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
         });
 
         //-----Check the collision-----\\
@@ -95,20 +98,20 @@
         //-----Game logic-----\\
         app.ticker.add(() => {
             if (isGameOver) return;
-            frames++; 
-            ground.tilePosition.x -= 2.5;
+            frames++;
+            ground.tilePosition.x -= scrollSpeed;
 
-            player.vy += gravity; 
+            player.vy += gravity;
             player.y += player.vy;
             let onGround = false;
-            
-            if (player.y + player.height > ground.y) { 
-                player.y = ground.y - player.height; 
+
+            if (player.y + player.height > ground.y) {
+                player.y = ground.y - player.height;
                 player.vy = 0;
-                onGround = true; 
+                onGround = true;
             }
 
-            //Move the platforms
+            //Platform collision
             platforms.forEach(plat => {
                 if (player.vy >= 0 && player.y + player.height >= plat.y && player.y + player.height <= plat.y + player.vy + 2 && player.x + player.width > plat.x && player.x < plat.x + plat.width) {
                     player.y = plat.y - player.height; 
@@ -122,7 +125,7 @@
             if (keys['ArrowLeft'] && player.x > 0) player.x -= moveSpeed;
             if ((keys['ArrowUp'] || keys['Space']) && onGround) player.vy = jumpForce;
 
-            //Shoot logic
+            //Shoot
             if (keys['KeyZ'] && frames % 20 === 0) {
                 const b = new PIXI.Sprite(texBullet); 
                 b.x = player.x + 40; 
@@ -131,16 +134,27 @@
                 gameContainer.addChild(b);
             }
 
+
             //-----Spawning logic-----\\
-            //Platform
+            //Platform + Shooter
             if (frames % 120 === 0) {
-                console.log("Spaned plat");
+                //Platform
                 const plat = new PIXI.Sprite(texPlatform); 
                 plat.x = 1250;
                 plat.y = Math.random() * ((ground.y - 40) - Math.max(200, lastPlatformY - 80)) + Math.max(200, lastPlatformY - 80);
                 lastPlatformY = plat.y; 
                 platforms.push(plat); 
                 gameContainer.addChild(plat);
+
+                //Shooter
+                if (Math.random() < 0.4) { 
+                    const s = new PIXI.Sprite(texShooter); 
+                    s.x = plat.x + 40; 
+                    s.y = plat.y - 40; 
+                    s.shootTimer = 0; 
+                    shooters.push(s); 
+                    gameContainer.addChild(s); 
+                }
             }
 
             //Crawler
@@ -162,7 +176,7 @@
                 gameContainer.addChild(nest); 
             }
 
-            //Bullet collision
+            //Player-Bullet collision
             for (let i = bullets.length - 1; i >= 0; i--) {
                 bullets[i].x += 10;
                 if (bullets[i].x > 1250) { 
@@ -171,20 +185,58 @@
                 }
             }
 
+            //Enemy-Bullet collision
+            for (let i = enemyBullets.length - 1; i >= 0; i--) {
+                enemyBullets[i].x -= 4;
+                if (checkCollision(player, enemyBullets[i])) { 
+                    hp--; 
+                    hpText.text = 'HP: ' + hp; 
+                    gameContainer.removeChild(enemyBullets[i]); 
+                    enemyBullets.splice(i, 1); 
+                    if (hp <= 0) 
+                    isGameOver = true; 
+                    continue; 
+                }
+            }
+
             //Move objects and destroy them once they leave the screen
-            [platforms, crawlers, nests].forEach(arr => {
+            [platforms, crawlers, nests, shooters, enemyBullets].forEach(arr => {
                 for (let i = arr.length - 1; i >= 0; i--) {
-                    arr[i].x -= scrollSpeed;
+                    if (arr !== enemyBullets) arr[i].x -= scrollSpeed;
                     if (arr[i].x < -140) { 
                         gameContainer.removeChild(arr[i]); 
                         arr.splice(i, 1); 
                     }
                 }
             });
+            
 
-            //-----Collision between enemies and Player-----\\
+            //-----Shooters shooting logic-----\\
+            for (let i = shooters.length - 1; i >= 0; i--) {
+                shooters[i].shootTimer++;
+                if (shooters[i].shootTimer > 150) { 
+                    shooters[i].shootTimer = 0; 
+                    let eb = new PIXI.Sprite(texEnemyBullet); 
+                    eb.x = shooters[i].x; 
+                    eb.y = shooters[i].y + 15; 
+                    enemyBullets.push(eb); 
+                    gameContainer.addChild(eb); 
+                }
+                for (let j = bullets.length - 1; j >= 0; j--) { 
+                    if (shooters[i] && checkCollision(bullets[j], shooters[i])) { 
+                        score += 20; 
+                        scoreText.text = 'Score: ' + score; 
+                        gameContainer.removeChild(shooters[i]); 
+                        gameContainer.removeChild(bullets[j]); 
+                        shooters.splice(i, 1); 
+                        bullets.splice(j, 1); break; 
+                    } 
+                }
+            }
+
+            //-----Collision between crawlers and Player-----\\
             for (let i = crawlers.length - 1; i >= 0; i--) {
-                //Add small movement speed to the cralwers
+                //Add small movement speed to the crawlers
                 crawlers[i].x -= 1;
                 if (checkCollision(player, crawlers[i])) {
                     hp--; 
