@@ -1,7 +1,8 @@
 <!DOCTYPE html>
+<html lang="en">
 
 <head>
-    <title>Bug Exterminato</title>
+    <title>Cave Exterminator</title>
     <style>
         body {
             background-color: black;
@@ -26,29 +27,38 @@
             backgroundColor: 0x111111 });
         document.body.appendChild(app.view);
 
-        
-        //-----Initial graphics-----юю
-        
-        const g = new PIXI.Graphics();
-        g.beginFill(0x2040f5); g.drawRect(0, 0, 40, 50);
-        const texPlayer = app.renderer.generateTexture(g);
+        //-----Texture generation-----\\
+        function createTex(w, h, color) {
+            const g = new PIXI.Graphics(); g.beginFill(color); g.drawRect(0, 0, w, h);
+            return app.renderer.generateTexture(g);
+        }
+        const texPlayer = createTex(40, 50, 0x2040f5);
+        const texGround = createTex(1200, 50, 0x19693b);
+        const texBug = createTex(40, 40, 0xe74c3c);
+        const texPlatform = createTex(120, 30, 0x555555);
+        const texNest = createTex(40, 40, 0x2ecc71);
 
-        g.clear(); g.beginFill(0x19693b); g.drawRect(0, 0, 1200, 50);
-        const texGround = app.renderer.generateTexture(g);
 
-        const gameContainer = new PIXI.Container();
-        app.stage.addChild(gameContainer);
-
-        const ground = new PIXI.Sprite(texGround);
+        //-----Render ground + player-----\\
+        const ground = new PIXI.TilingSprite(texGround, 1200, 50);
         ground.y = 550;
-        gameContainer.addChild(ground);
+        const gameContainer = new PIXI.Container();
+        app.stage.addChild(ground, gameContainer);
 
         const player = new PIXI.Sprite(texPlayer);
-        player.x = 100; player.y = 300;
+        player.x = 100; 
+        player.y = 300; 
         player.vy = 0;
         gameContainer.addChild(player);
 
+        //-----Game variables-----\\
+        const crawlers = [], nests = [], platforms = [];
         const keys = {};
+        let frames = 0;
+        const gravity = 0.25, jumpForce = -8.5, moveSpeed = 4, scrollSpeed = 2.5;
+        let lastPlatformY = ground.y;
+
+        //-----Input logic-----\\
         window.addEventListener('keydown', (e) => { 
             keys[e.code] = true; 
         });
@@ -56,24 +66,57 @@
             keys[e.code] = false; 
         });
 
-        const gravity = 0.25;
-        const jumpForce = -8.5;
-        const moveSpeed = 4;
-
+        //-----Game logic-----\\
         app.ticker.add(() => {
-            player.vy += gravity;
-            player.y += player.vy;
+            frames++;
+            ground.tilePosition.x -= scrollSpeed;
+
+            player.vy += gravity; player.y += player.vy;
             let onGround = false;
 
             if (player.y + player.height > ground.y) {
-                player.y = ground.y - player.height;
-                player.vy = 0;
-                onGround = true;
+                player.y = ground.y - player.height; player.vy = 0; onGround = true;
             }
 
+            //Move the platforms
+            platforms.forEach(plat => {
+                if (player.vy >= 0 && player.y + player.height >= plat.y && player.y + player.height <= plat.y + player.vy + 2 && player.x + player.width > plat.x && player.x < plat.x + plat.width) {
+                    player.y = plat.y - player.height; player.vy = 0; onGround = true;
+                }
+            });
+
+            //Move the player
             if (keys['ArrowRight'] && player.x < 600) player.x += moveSpeed;
             if (keys['ArrowLeft'] && player.x > 0) player.x -= moveSpeed;
             if ((keys['ArrowUp'] || keys['Space']) && onGround) player.vy = jumpForce;
+
+            //-----Spawning logic-----\\
+            //Platform
+            if (frames % 120 === 0) {
+                const plat = new PIXI.Sprite(texPlatform); plat.x = 1250;
+                plat.y = Math.random() * ((ground.y - 40) - Math.max(200, lastPlatformY - 80)) + Math.max(200, lastPlatformY - 80);
+                lastPlatformY = plat.y; platforms.push(plat); gameContainer.addChild(plat);
+            }
+
+            ///Crawler
+            if (frames % 150 === 0) {
+                const bug = new PIXI.Sprite(texBug); bug.x = 1250; bug.y = ground.y - 40;
+                crawlers.push(bug); gameContainer.addChild(bug);
+            }
+
+            //Nest
+            if (frames % 400 === 0) {
+                const nest = new PIXI.Sprite(texNest); nest.x = 1250; nest.y = ground.y - 40;
+                nests.push(nest); gameContainer.addChild(nest);
+            }
+
+            //Move and destroy the objects
+            [platforms, crawlers, nests].forEach(arr => {
+                for (let i = arr.length - 1; i >= 0; i--) {
+                    arr[i].x -= scrollSpeed;
+                    if (arr[i].x < -140) { gameContainer.removeChild(arr[i]); arr.splice(i, 1); }
+                }
+            });
         });
     </script>
 </body>
